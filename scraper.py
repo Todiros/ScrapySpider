@@ -1,6 +1,7 @@
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
-import scrapy
+from scrapy.http import Request
+import re
 
 class MrbSpider(CrawlSpider):
     name = 'mrbspider'
@@ -23,7 +24,7 @@ class MrbSpider(CrawlSpider):
         for link in response.xpath('//a[@class="name"]/@href').extract():
             self.COUNTER += 1
             full_url = self.BASE_URL + link
-            yield scrapy.Request(full_url, callback=self.parse_attr)
+            yield Request(full_url, callback=self.parse_attr)
 
     def parse_attr(self, response):
         product = response.xpath('//section[@class="product-single"]')
@@ -31,4 +32,18 @@ class MrbSpider(CrawlSpider):
         price = product.xpath('//p[@class="price"]/text()').extract_first()
         price = float(price[:-4].replace(',', '.'))
         img = product.xpath('//img/@src').extract_first()
-        print(self.BASE_URL + img, title, price)
+        img = self.BASE_URL + img
+
+        product_details = response.xpath('//section[@class="product-details"]')
+        EAN = product_details.xpath('//div[@id="home"]/div/span/strong/text()').extract_first()
+        EAN_num = product_details.xpath('//div[@id="home"]/div/span/text()').extract()
+
+        for i in EAN_num:
+            if re.search('[^\\r\\n\\t]', i):
+                EAN_num = i[4:]
+
+        EAN_full = " ".join([EAN, EAN_num])
+
+        print(img, title, price, EAN_full)
+
+
