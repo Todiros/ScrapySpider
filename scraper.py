@@ -22,11 +22,11 @@ class MrbSpider(CrawlSpider):
 
     def parse_start_url(self, response):
         for link in response.xpath('//a[@class="name"]/@href').extract():
-            self.COUNTER += 1
             full_url = self.BASE_URL + link
             yield Request(full_url, callback=self.parse_attr)
 
     def parse_attr(self, response):
+        self.COUNTER += 1
         product = response.xpath('//section[@class="product-single"]')
         title = product.xpath('//h1/text()').extract_first()
         price = product.xpath('//p[@class="price"]/text()').extract_first()
@@ -35,6 +35,8 @@ class MrbSpider(CrawlSpider):
         img = self.BASE_URL + img
 
         product_details = response.xpath('//section[@class="product-details"]')
+
+        # --- EAN ---
         EAN = product_details.xpath('//div[@id="home"]/div/span/strong/text()').extract_first()
         EAN_num = product_details.xpath('//div[@id="home"]/div/span/text()').extract()
 
@@ -44,6 +46,18 @@ class MrbSpider(CrawlSpider):
 
         EAN_full = " ".join([EAN, EAN_num])
 
-        print(img, title, price, EAN_full)
+        # --- PRODUCT DESCRIPTION ---
+        product_info = product_details.xpath('//table[@class="table"]/tbody/tr/td/text()').extract()
 
+        if not product_info:
+            product_info = product_details.xpath('//div[@id="home"]/div/text()').extract()
 
+        for idx, val in enumerate(product_info):
+            product_info[idx] = val.strip()
+
+        product_info = [x for x in product_info if x != '']
+
+        if (len(product_info) > 3) and (product_info[2] == 'Гаранция'):
+            product_info[3] = re.sub('[\\r\\n\\t\\xa0]', '', product_info[3])
+
+        print(self.COUNTER, img, title, price, EAN_full, product_info)
